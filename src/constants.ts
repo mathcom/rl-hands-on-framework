@@ -1,4 +1,4 @@
-export const APP_TITLE = "RL Hands-on Framework (LunarLander)";
+export const APP_TITLE = "RL Hands-on Framework";
 
 export const REQUIREMENTS_TXT = `gymnasium[box2d]
 torch
@@ -6,88 +6,139 @@ numpy
 matplotlib
 swig`;
 
-export const AGENT_TEMPLATE_PY = `import torch
-import torch.nn as nn
-import torch.optim as optim
-import numpy as np
+// =====================================================================
+// [Level 1] 동적 프로그래밍 & Tabular Method (Q-Table)
+// =====================================================================
+export const LEVEL1_CODE = `import numpy as np
 import random
-from typing import Tuple, List, Dict
+from typing import Tuple
 
 class Agent:
     def __init__(self, state_dim: int, action_dim: int):
         """
-        에이전트 초기화 (Agent Initialization)
-        
-        LunarLander-v2 환경 정보:
-        - state_dim: 8 (착륙선의 좌표 x,y, 속도 vx,vy, 각도, 각속도, 다리 접촉 여부 등)
-        - action_dim: 4 (0: 아무것도 안함, 1: 왼쪽 엔진, 2: 메인 엔진, 3: 오른쪽 엔진)
-
-        Args:
-            state_dim (int): 상태 공간의 차원 (Dimension of state space)
-            action_dim (int): 행동 공간의 차원 (Dimension of action space)
+        [Level 1] Tabular Agent (Q-Learning)
+        목표: 연속적인 LunarLander의 상태를 이산화(Discrete)하여 Q-Table을 만드세요.
         """
-        self.state_dim = state_dim
         self.action_dim = action_dim
-        
-        # TODO: 신경망 모델을 정의하세요 (예: nn.Sequential 사용)
-        # 힌트: 입력(8) -> 은닉층 -> 출력(4) 구조가 필요합니다.
-        self.model = None 
-        
-        # TODO: 최적화(Optimizer)와 손실 함수(Loss function)를 정의하세요
-        self.optimizer = None
-        
-        # 하이퍼파라미터
+        self.lr = 0.1  # 학습률
         self.gamma = 0.99
         self.epsilon = 1.0
         self.epsilon_decay = 0.995
-        self.epsilon_min = 0.01
+
+        # TODO 1: Q-Table 초기화
+        # 힌트: 상태를 몇 개의 구간으로 나눌지 결정해야 합니다. (예: 6개의 구간)
+        # self.q_table = {} 
+
+    def discretize(self, state: np.ndarray) -> Tuple[int, ...]:
+        """
+        상태 벡터(8개)를 이산적인 키(Tuple)로 변환하는 함수
+        예: [0.12, -0.4, ...] -> (1, 3, 0, ...)
+        """
+        # TODO 2: np.digitize 또는 np.linspace를 사용하여 구현하세요.
+        return tuple()
 
     def get_action(self, state: np.ndarray) -> int:
-        """
-        현재 상태(state)를 받아 행동(action)을 결정합니다.
+        # Epsilon-Greedy 구현
+        if random.random() < self.epsilon:
+            return random.randint(0, self.action_dim - 1)
         
-        Args:
-            state (np.ndarray): 현재 상태 (shape: (8,))
-            
-        Returns:
-            int: 선택된 행동 (0~3)
-        """
-        # TODO: 엡실론-그리디(Epsilon-Greedy) 전략을 구현하세요
-        # 1. random.random() < self.epsilon 이면 무작위 행동 (0~3) 선택
-        # 2. 그렇지 않으면 모델을 통해 최적의 행동 선택 (torch.argmax 활용)
-        
-        # 더미 로직 (구현 후 삭제): 랜덤 행동
-        return random.randint(0, self.action_dim - 1)
+        # TODO 3: Q-Table에서 가장 높은 가치를 가진 행동 선택
+        state_key = self.discretize(state)
+        return 0 # argmax 구현 필요
 
-    def update(self, transition: Tuple[np.ndarray, int, float, np.ndarray, bool]) -> float:
-        """
-        학습 데이터를 받아 모델을 업데이트합니다.
-        
-        Args:
-            transition (Tuple): (state, action, reward, next_state, done)
-            
-        Returns:
-            float: 계산된 손실(Loss) 값 (로깅용)
-        """
+    def update(self, transition: Tuple[np.ndarray, int, float, np.ndarray, bool]):
         state, action, reward, next_state, done = transition
         
-        # 데이터 변환 (numpy -> tensor)
-        state_t = torch.FloatTensor(state)
-        next_state_t = torch.FloatTensor(next_state)
-        action_t = torch.LongTensor([action])
-        reward_t = torch.FloatTensor([reward])
-        done_t = torch.FloatTensor([0.0 if done else 1.0])
+        # TODO 4: Bellman Equation 구현 (Q-Learning Update)
+        # Q(s,a) = Q(s,a) + lr * (reward + gamma * max(Q(s', a')) - Q(s,a))
+        pass
+`;
+
+// =====================================================================
+// [Level 2] Value-based RL (DQN)
+// =====================================================================
+export const LEVEL2_CODE = `import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import random
+
+class QNetwork(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super().__init__()
+        # TODO 1: 신경망 레이어 정의 (Input -> Hidden -> Output)
+        self.fc = nn.Sequential(
+            nn.Linear(state_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, action_dim)
+        )
+
+    def forward(self, x):
+        return self.fc(x)
+
+class Agent:
+    def __init__(self, state_dim: int, action_dim: int):
+        """
+        [Level 2] DQN Agent
+        목표: 신경망을 사용하여 Q-Function을 근사(Approximation)하세요.
+        """
+        self.q_net = QNetwork(state_dim, action_dim)
+        self.target_net = QNetwork(state_dim, action_dim)
+        self.target_net.load_state_dict(self.q_net.state_dict())
         
-        # TODO: DQN 학습 로직 구현
-        # 1. 현재 Q값: q_values = self.model(state_t)[action_t]
-        # 2. 타겟 Q값: target = reward + gamma * max(self.model(next_state_t)) * (1 - done)
-        # 3. Loss 계산 및 역전파 (Backpropagation)
-        
-        # Epsilon 감소
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
-            
-        return 0.0 # Loss 반환
+        self.optimizer = optim.Adam(self.q_net.parameters(), lr=0.0005)
+        self.memory = [] # Replay Buffer (deque 사용 권장)
+
+    def get_action(self, state: np.ndarray) -> int:
+        # TODO 2: 신경망을 통과시켜 행동 결정 (epsilon-greedy)
+        return 0
+
+    def update(self, transition):
+        # TODO 3: Experience Replay 구현
+        # 1. 메모리에 저장
+        # 2. 배치 샘플링
+        # 3. Loss 계산 (MSELoss)
+        # 4. Backprop
+        pass
+`;
+
+// =====================================================================
+// [Level 3] Policy-based RL (PPO / Actor-Critic)
+// =====================================================================
+export const LEVEL3_CODE = `import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.distributions import Categorical
+
+class ActorCritic(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super().__init__()
+        # TODO 1: Actor(정책)와 Critic(가치) 네트워크 정의 (공유 레이어 사용 가능)
+        self.actor = nn.Linear(64, action_dim)
+        self.critic = nn.Linear(64, 1)
+
+    def forward(self, x):
+        return x
+
+class Agent:
+    def __init__(self, state_dim: int, action_dim: int):
+        """
+        [Level 3] Policy Gradient Agent (PPO/A2C)
+        목표: 확률적 정책(Stochastic Policy)을 직접 학습하세요.
+        """
+        self.model = ActorCritic(state_dim, action_dim)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=0.0003)
+
+    def get_action(self, state):
+        # TODO 2: Softmax 확률 분포에서 행동 샘플링 (Categorical 활용)
+        # return action, log_prob
+        return 0, 0
+
+    def update(self, transitions):
+        # TODO 3: Policy Gradient Loss 계산
+        # Loss = - log_prob * advantage
+        pass
 `;
 
 export const MAIN_PY = `import argparse
@@ -104,6 +155,7 @@ except ImportError:
     print("오류: gymnasium이 설치되지 않았습니다. (pip install gymnasium)")
     sys.exit(1)
 
+# 학생들에게는 "자신의 레벨에 맞는 코드를 'agent.py'로 저장해서 실행하세요"라고 안내하는 것이 가장 깔끔합니다.
 from agent_template import Agent
 
 def parse_args():
@@ -239,36 +291,61 @@ export const SYSTEM_INSTRUCTION_KOREAN = `
 `;
 
 export const RUN_GUIDE_MD = `
-### 실행 방법 (How to Run)
+### 🌕 LunarLander 강화학습 챌린지 가이드
 
-이 프레임워크는 로컬 Python 환경에서 **LunarLander-v2**를 실행하도록 설정되었습니다.
+본 프레임워크는 한 학기 동안 여러분의 강화학습 에이전트를 **Tabular Method**부터 **Deep RL**까지 점진적으로 발전시킬 수 있도록 설계되었습니다.
 
-1. **파일 준비**
-   - 상단 탭의 \`requirements.txt\`, \`agent_template.py\`, \`main.py\` 코드를 복사하여 로컬에 저장합니다.
+---
 
-2. **환경 설정 (중요)**
-   Box2D 물리 엔진이 필요하므로 다음 명령어로 라이브러리를 설치하세요.
-   \`\`\`bash
-   # Windows/Mac/Linux 공통
-   pip install swig
-   pip install -r requirements.txt
-   \`\`\`
-   *참고: Windows 사용자는 swig 설치 에러 시 [링크](http://www.swig.org/download.html)에서 바이너리를 다운받거나 conda를 사용하세요.*
+### 📚 단계별 학습 목표 (Curriculum)
 
-3. **에이전트 구현**
-   \`agent_template.py\`를 열고 \`TODO\`를 따라 구현합니다.
-   - **입력:** 8차원 벡터 (상태)
-   - **출력:** 4차원 벡터 (각 행동에 대한 Q값)
+왼쪽 상단의 **[Select Level]** 메뉴에서 단계를 선택하여 템플릿 코드를 확인하세요.
 
-4. **학습 (Training)**
-   \`\`\`bash
-   python main.py --train
-   \`\`\`
-   실시간으로 보상(Reward) 그래프가 그려집니다. 목표 점수는 200점 이상입니다.
+#### Level 1: Tabular Methods (Q-Learning)
+- **목표:** 연속적인 상태 공간(Continuous Space)을 어떻게 테이블에 저장할지 고민해봅니다.
+- **핵심:** \`discretize\` 함수를 구현하여 상태를 이산화(Bucket)하고, Q-Table을 갱신합니다.
+- **난관:** 상태를 너무 잘게 쪼개면 테이블이 폭발하고, 너무 크게 쪼개면 학습이 안 되는 딜레마를 경험해 보세요.
 
-5. **테스트 (Testing)**
-   \`\`\`bash
-   python main.py --test
-   \`\`\`
-   학습된 모델(\`lunar_lander_model.pth\`)을 불러와 실제 착륙 장면을 렌더링합니다.
+#### Level 2: Value-based Deep RL (DQN)
+- **목표:** 테이블 대신 **신경망(Neural Network)**으로 Q-Function을 근사(Approximation)합니다.
+- **핵심:** PyTorch를 사용하여 Q-Network를 구현하고, **Experience Replay**와 **Target Network**가 왜 필요한지 코드로 체감합니다.
+
+#### Level 3: Policy-based Deep RL (PPO)
+- **목표:** 최신 알고리즘인 PPO(Proximal Policy Optimization)를 구현합니다.
+- **핵심:** 가치(Value)뿐만 아니라 **정책(Policy)**을 직접 최적화하여, 더 부드럽고 안정적인 비행을 구현합니다.
+
+---
+
+### 🛠️ 실행 방법 (How to Run)
+
+이 프레임워크는 로컬 Python 환경에서 실행됩니다. 다음 순서대로 진행해 주세요.
+
+#### 1. 환경 설정 (Environment Setup)
+Box2D 물리 엔진 구동을 위해 필수 라이브러리를 설치해야 합니다.
+
+\`\`\`bash
+# 1. 의존성 설치 (Windows/Mac/Linux 공통)
+pip install swig
+pip install -r requirements.txt
+\`\`\`
+> **⚠️ 주의:** Windows 사용자는 \`swig\` 설치 시 에러가 발생할 수 있습니다. 에러 발생 시 [링크](http://www.swig.org/download.html)에서 바이너리를 다운받거나 Anaconda를 사용하세요.
+
+#### 2. 에이전트 코드 준비
+1. 왼쪽 탭에서 도전할 **Level**을 선택합니다.
+2. 코드를 복사하여 로컬 폴더에 **\`agent.py\`** 라는 이름으로 저장합니다.
+3. 주석에 달린 **\`TODO\`** 부분을 채워 알고리즘을 완성합니다.
+
+#### 3. 학습 (Training)
+에이전트가 달 착륙을 스스로 학습하는 과정을 지켜봅니다.
+\`\`\`bash
+python main.py --train
+\`\`\`
+* 실시간으로 보상(Reward) 그래프가 그려집니다.
+* **목표 점수:** 200점 이상 (안전하게 착륙하여 멈춤)
+
+#### 4. 테스트 (Testing)
+학습된 모델(\`lunar_lander_model.pth\` 또는 \`q_table.pkl\`)을 불러와 실제 렌더링 화면을 확인합니다.
+\`\`\`bash
+python main.py --test
+\`\`\`
 `;

@@ -1,28 +1,28 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-
+# Node.js
 node_modules
 dist
 dist-ssr
+*.local
+
+# Python & Backend
+__pycache__
+*.py[cod]
+backend/venv
+.pytest_cache
+
+# Environment Variables (보안 필수)
 .env
-.env.local
-*.pem
+.env.*
 
+# Docker & Database Volumes (용량 큼)
+ollama_storage
+chroma_db
+/data
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# OS Files
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# IDE Files
+.idea
+.vscode

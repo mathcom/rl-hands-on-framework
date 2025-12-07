@@ -1,19 +1,19 @@
 services:
-  # 1. Frontend Web Server (React App)
+  # 1. Frontend Web Server (React)
   web:
     build: .
     ports:
-      # PC(Host)의 5137을 컨테이너(Internal)의 5173에 연결
-      - "5137:5173"
+      - "3000:3000"
     environment:
-      - VITE_API_BASE_URL=/api
+      # [변경] 이제 프론트엔드는 백엔드(8000번)로 요청을 보냅니다.
+      - VITE_API_BASE_URL=http://backend:8000
     depends_on:
-      - ollama
+      - backend
     develop:
       watch:
         - action: sync
-          path: ./
-          target: /app
+          path: ./src
+          target: /app/src
           ignore:
             - node_modules/
         - action: rebuild
@@ -21,13 +21,28 @@ services:
     networks:
       - rl-network
 
-  # 2. Local LLM Server (Ollama)
+  # 2. Backend API Server (FastAPI + RAG) [신규]
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # [핵심] 호스트의 현재 폴더(./)를 컨테이너의 /app/data에 마운트합니다.
+      # 그래야 백엔드가 requirements.txt나 agent_template.py를 읽어서 학습할 수 있습니다.
+      - ./:/app/data
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - ANONYMIZED_TELEMETRY=False
+    depends_on:
+      - ollama
+    networks:
+      - rl-network
+
+  # 3. Local LLM Server (Ollama)
   ollama:
     image: ollama/ollama:latest
     ports:
       - "11434:11434"
-    environment:
-      - OLLAMA_ORIGINS="*"
     volumes:
       - ollama_storage:/root/.ollama
     deploy:
@@ -39,16 +54,14 @@ services:
               capabilities: [gpu]
     networks:
       - rl-network
-    # 컨테이너 시작 시 모델을 자동으로 다운로드 (Llama 3.1 8B)
+    # [변경] 임베딩 모델(nomic-embed-text) 추가 다운로드
     entrypoint: /bin/sh
-    command: -c "ollama serve & sleep 5 && ollama pull llama3.1 && wait"
+    command: -c "ollama serve & sleep 5 && ollama pull llama3.1 && ollama pull nomic-embed-text && wait"
 
-  # 3. Cloudflare Tunnel
+  # 4. Cloudflare Tunnel
   tunnel:
     image: cloudflare/cloudflared:latest
-    # 터널은 Docker 내부망을 쓰므로 '내부 포트'인 5173을 적어야 합니다.
-    # (호스트 포트인 5137이 아닙니다!)
-    command: tunnel --url http://web:5173
+    command: tunnel --url http://web:3000
     networks:
       - rl-network
     depends_on:

@@ -1,9 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-// 환경변수 or localhost fallback
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:11434/v1';
-const OLLAMA_API_URL = `${BASE_URL}/chat/completions`;
-const MODEL_NAME = 'llama3.1';
+// 이제 파일 내용을 import 할 필요가 없습니다! (백엔드가 읽음)
 
 interface Message {
   id: string;
@@ -21,7 +18,7 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onClose, isMobile }) => {
     { 
       id: 'init', 
       role: 'model', 
-      text: '안녕하세요! AI 조교입니다. 무엇을 도와드릴까요?' 
+      text: '안녕하세요! 강화학습 RAG 조교입니다. 프로젝트 코드에 대해 무엇이든 물어보세요.' 
     }
   ]);
   const [input, setInput] = useState('');
@@ -45,36 +42,29 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onClose, isMobile }) => {
     setLoading(true);
 
     try {
-      const apiHistory = messages.map(m => ({
-        role: m.role === 'model' ? 'assistant' : 'user',
-        content: m.text
-      }));
-
-      const systemMessage = {
-        role: 'system',
-        content: `당신은 강화학습 수업의 친절한 AI 조교입니다. 한국어로 답변하세요. 복잡한 수식보다는 직관적인 설명을 제공하세요.`
-      };
-
-      const response = await fetch(OLLAMA_API_URL, {
+      // [핵심 변경] 복잡한 프롬프트 없이 질문만 백엔드로 보냅니다.
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: MODEL_NAME,
-          messages: [systemMessage, ...apiHistory, { role: 'user', content: input }],
-          temperature: 0.7,
+          message: input,
+          // 필요하다면 대화 내역도 보낼 수 있습니다.
+          history: [] 
         })
       });
 
-      if (!response.ok) throw new Error('Server Error');
+      if (!response.ok) throw new Error('Backend Server Error');
+      
       const data = await response.json();
-      const aiResponseText = data.choices[0]?.message?.content || "답변 오류";
+      const aiResponseText = data.reply || "답변을 가져오지 못했습니다.";
       
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'model', text: aiResponseText }]);
 
     } catch (error) {
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: '⚠️ AI 서버 연결 실패. PC에서 Docker 상태를 확인해주세요.' }]);
+      console.error(error);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: '⚠️ 백엔드 연결 실패. 잠시 후 다시 시도해주세요.' }]);
     } finally {
       setLoading(false);
     }
@@ -82,13 +72,13 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onClose, isMobile }) => {
 
   return (
     <div className={`flex flex-col h-full bg-slate-800 ${!isMobile && 'rounded-lg border border-slate-700 shadow-lg'} overflow-hidden`}>
-      {/* Desktop Header (Mobile hides this as it has its own header in App.tsx) */}
       {!isMobile && (
         <div className="p-4 bg-slate-900 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
             <div>
-              <h2 className="font-semibold text-white text-sm">AI Assistant</h2>
+              <h2 className="font-semibold text-white text-sm">RAG AI Assistant</h2>
+              <span className="text-xs text-slate-400">Powered by LangChain & Chroma</span>
             </div>
           </div>
           {onClose && (
@@ -99,7 +89,6 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onClose, isMobile }) => {
         </div>
       )}
       
-      {/* Chat Area */}
       <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-900/50">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -115,6 +104,7 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onClose, isMobile }) => {
         {loading && (
           <div className="flex justify-start">
             <div className="bg-slate-700 rounded-2xl rounded-bl-none px-4 py-3 flex gap-1 items-center">
+               <span className="text-xs text-slate-400 mr-2">Searching Docs...</span>
                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-75"></div>
                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-150"></div>
@@ -124,7 +114,6 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onClose, isMobile }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="p-3 md:p-4 bg-slate-800 border-t border-slate-700">
         <div className="flex gap-2">
           <input
@@ -132,13 +121,13 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onClose, isMobile }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder="질문을 입력하세요..."
-		    className="flex-grow bg-slate-900 border border-slate-600 text-white text-base rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-slate-500"
+            placeholder="코드에 대해 물어보세요..."
+            className="flex-grow bg-slate-900 border border-slate-600 text-white text-base rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-slate-500"
           />
           <button
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="bg-purple-600 hover:bg-purple-500 disabled:bg-slate-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors shadow-lg"
+            className="bg-purple-600 hover:bg-purple-500 disabled:bg-slate-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors shadow-lg flex-none"
           >
             <svg className="w-5 h-5 translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
           </button>
