@@ -1,0 +1,62 @@
+services:
+  # 1. Frontend Web Server (React App)
+  web:
+    build: .
+    ports:
+      # PC(Host)의 5137을 컨테이너(Internal)의 5173에 연결
+      - "5137:5173"
+    environment:
+      - VITE_API_BASE_URL=/api
+    depends_on:
+      - ollama
+    develop:
+      watch:
+        - action: sync
+          path: ./
+          target: /app
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: package.json
+    networks:
+      - rl-network
+
+  # 2. Local LLM Server (Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_ORIGINS="*"
+    volumes:
+      - ollama_storage:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - rl-network
+    # 컨테이너 시작 시 모델을 자동으로 다운로드 (Llama 3.1 8B)
+    entrypoint: /bin/sh
+    command: -c "ollama serve & sleep 5 && ollama pull llama3.1 && wait"
+
+  # 3. Cloudflare Tunnel
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    # 터널은 Docker 내부망을 쓰므로 '내부 포트'인 5173을 적어야 합니다.
+    # (호스트 포트인 5137이 아닙니다!)
+    command: tunnel --url http://web:5173
+    networks:
+      - rl-network
+    depends_on:
+      - web
+
+volumes:
+  ollama_storage:
+
+networks:
+  rl-network:
+    driver: bridge
