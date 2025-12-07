@@ -1,10 +1,17 @@
 # 🚀 RL Hands-on Framework: LunarLander Agent
 
-\<div align="center"\>
-\<img width="100%" alt="LunarLander Simulation" src="[https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6](https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6)" /\>
-<br>
-\<h3\>🤖 AI 조교와 함께하는 강화학습 실습 플랫폼\</h3\>
-\</div\>
+<p align="center">
+  <img width="100%" alt="LunarLander Simulation" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Built%20with-Google%20AI%20Studio-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google AI Studio" />
+  <img src="https://img.shields.io/badge/Powered%20by-Gemini%20Pro-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Gemini Pro" />
+</p>
+
+<p align="center">
+  <b>🤖 AI 조교와 함께하는 강화학습 실습 플랫폼</b>
+</p>
 
 ## 📖 과제 개요 (Overview)
 
@@ -128,6 +135,13 @@ docker compose up --build -d
 
 -----
 
-\<div align="center"\>
-MIT License | Created by Agent RL Class (2025)
-\</div\>
+## ⚡ Credits
+
+This framework was developed using **Google AI Studio** and **Gemini**.
+Special thanks to the **Gemini 3 Pro** model for assistance in code generation, architecture design, and documentation.
+
+-----
+
+<p align="center">
+  MIT License | Created by Jonghwan Choi (2026)
+</p>
