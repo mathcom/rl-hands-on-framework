@@ -142,6 +142,6 @@ Special thanks to the **Gemini 3 Pro** model for assistance in code generation, 
 
 -----
 
-\<p align="center"\>
+<p align="center"\>
 MIT License | Created by Jonghwan Choi (2026)
-\</p\>
+</p\>
